@@ -1,0 +1,57 @@
+{
+  "description": "python 3.14 version schema",
+  "enable_dynamic_field": true,
+  "fields": [
+    {
+      "name": "id",
+      "type": "INT64",
+      "is_primary": true,
+      "auto_id": true
+    },
+    {
+      "name": "embedding",
+      "type": "FLOAT_VECTOR",
+      "params": {
+        "dim": 1024
+      }
+    },
+    {
+      "name": "text",
+      "type": "VARCHAR",
+      "params": {
+        "max_length": 65535
+      }
+    },
+    {
+      "name": "source_file",
+      "type": "VARCHAR",
+      "params": {
+        "max_length": 65535
+      }
+    },
+    {
+      "name": "title",
+      "type": "VARCHAR",
+      "params": {
+        "max_length": 65535
+      },
+      "nullable": true
+    },
+    {
+      "name": "chunk_index",
+      "type": "INT64"
+    },
+    {
+      "name": "metadata",
+      "type": "JSON"
+    },
+    {
+      "name": "header_path",
+      "type": "VARCHAR",
+      "params": {
+        "max_length": 65535
+      },
+      "nullable": true
+    }
+  ]
+}
