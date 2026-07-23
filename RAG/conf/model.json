@@ -1,0 +1,4 @@
+{
+    "ollama" :{"model_url":"http://localhost:11434/v1"},
+    "vllm": {"model_url":"http://localhost"}
+}
