@@ -14,6 +14,7 @@ type_mapping = {
     "FLOAT_VECTOR": DataType.FLOAT_VECTOR,
     "VARCHAR": DataType.VARCHAR,
     "JSON": DataType.JSON,
+    "SPARSE_FLOAT_VECTOR": DataType.SPARSE_FLOAT_VECTOR
 }
 
 from vectorDB.milvus_manager.milvus_manager import get_milvus_client
@@ -48,10 +49,15 @@ def create_collection(collection_name:str , schema:CollectionSchema):
 def create_index(collection_name:str) -> bool:
     index_params =  client.prepare_index_params()
     index_params.add_index(
-        field_name="embedding",
-        index_type="IVF_FLAT",
-        metric_type="L2",
-        params={"nlist": 128},
+        field_name="dense_embedding",
+        index_type="AUTOINDEX",
+        metric_type="COSINE",
+    )
+    # Sparse
+    index_params.add_index(
+        field_name="sparse_embedding",
+        index_type="SPARSE_INVERTED_INDEX",
+        metric_type="IP",
     )
     client.create_index(collection_name=collection_name, index_params=index_params)
     return True

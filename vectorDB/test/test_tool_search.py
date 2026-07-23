@@ -8,5 +8,8 @@ from tools.search import RAGRetriever
 def test_tool_search():
     # Test the search functionality
     retriever = RAGRetriever(collection_name="python3_14")
-    search_results = retriever.search(msg="How about use dict in python. ", limit=10, filter_expr="")
-    assert search_results is not None
+    msg= "How about use dict in python3.14 version . "
+    search_results = retriever.hybrid_search(msg=msg, hybrid_top_K=30, filter_expr="")
+    reranked_results = retriever.cross_rerank(query=msg, candidates=search_results, top_k=5)
+    assert reranked_results is not None
+

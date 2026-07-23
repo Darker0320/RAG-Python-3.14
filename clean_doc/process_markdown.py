@@ -67,11 +67,12 @@ def dismantle_begM3(file: Path) -> list[dict[str, Any]]:
             else page_content
         )
 
-        embedding_vector = do_embedding(embedding_text)
+        embedding_vector, sparse_vector = do_embedding(embedding_text)
 
         documents.append({
             "text": page_content,
-            "embedding": embedding_vector,
+            "dense_embedding": embedding_vector,
+            "sparse_embedding": sparse_vector,
             "source_file": file.name,
             "title": title,
             "chunk_index": index,

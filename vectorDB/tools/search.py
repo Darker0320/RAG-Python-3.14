@@ -1,6 +1,5 @@
 import os, sys
-import numpy as np
-from pymilvus import MilvusClient
+from pymilvus import MilvusClient, AnnSearchRequest, RRFRanker
 from typing import Optional, Any
 import torch
 from sentence_transformers import CrossEncoder
@@ -31,13 +30,30 @@ class RAGRetriever:
         if self.client is None:
             raise Exception("Failed to initialize Milvus client")
 
-    def search(self, msg:str , limit:int=10, filter_expr:str = "") -> list[dict[str,Any]]:
-        query_embedding = do_embedding(msg)
-        search_kwargs = {
-            "collection_name": self.collection_name,
-            "data": [query_embedding],
-            "limit": limit,
-            "output_fields": [
+    def hybrid_search(self, msg:str , hybrid_top_K:int=30, filter_expr:str = "") -> list[dict[str,Any]]:
+        dense_embedding , sparse_embedding = do_embedding(msg)
+
+        dense_request = AnnSearchRequest(
+            data=[dense_embedding],
+            anns_field="dense_embedding",
+            param={"metric_type":"COSINE", "params": {}},
+            limit=hybrid_top_K *3,
+            expr=filter_expr or None,
+        )
+
+        sparse_request = AnnSearchRequest(
+            data=[sparse_embedding],
+            anns_field="sparse_embedding",
+            param={"metric_type":"IP", "params": {}},
+            limit=hybrid_top_K *3,
+            expr=filter_expr or None,
+        )
+
+        result = sorted(self.client.hybrid_search(
+            collection_name=self.collection_name,
+            reqs=[dense_request, sparse_request],
+            ranker=RRFRanker(),
+            output_fields=[
                 "text",
                 "metadata",
                 "source_file",
@@ -45,29 +61,19 @@ class RAGRetriever:
                 "chunk_index",
                 "header_path",
             ],
-        }
-        if filter_expr:
-            search_kwargs["filter"] = filter_expr
-        results = self.client.search(**search_kwargs)
-        return  results if results else []
+        )[0], key=lambda x: float(x['distance']), reverse=True)[:hybrid_top_K]
 
-    def rerank(self, msg:str , candidates:list[dict[str, Any]] , top_k:int = 5 , min_score:float = 0.15) -> list[dict[str, Any]]:
-        prepared: list[tuple[str, str]] = [
-            (msg , candidate["text"]) for candidate in candidates[0]
+        return result if result else []
+
+    def cross_rerank(self, query:str, candidates:list[dict[str,Any]], top_k:int=5) -> list[dict[str,Any]]:
+        if not candidates:
+            return []
+
+        candidate_texts = [candidate['entity']['text'] for candidate in candidates]
+        scores = self.reranker.predict([(query, text) for text in candidate_texts])
+        scored_candidates = [
+            {**candidate, 'score': score}
+            for candidate, score in zip(candidates, scores)
         ]
-        scores = self.reranker.predict(prepared,batch_size=top_k,show_progress_bar=False,convert_to_numpy=True)
-        scores = np.asarray(scores).reshape(-1)
-        reranked: list[dict[str, Any]] = []
-
-        for candidate, score in zip(candidates[0], scores):
-            item = candidate.copy()
-            item["rerank_score"] = float(score)
-            if score >= min_score:
-                reranked.append(item)
-
-        reranked = sorted(
-            reranked,
-            key=lambda item: item["rerank_score"],
-            reverse=True,
-        )[:top_k]
-        return reranked
+        scored_candidates.sort(key=lambda x: x['score'], reverse=True)
+        return scored_candidates[:top_k]

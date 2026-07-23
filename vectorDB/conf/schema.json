@@ -9,7 +9,7 @@
       "auto_id": true
     },
     {
-      "name": "embedding",
+      "name": "dense_embedding",
       "type": "FLOAT_VECTOR",
       "params": {
         "dim": 1024
@@ -52,6 +52,10 @@
         "max_length": 65535
       },
       "nullable": true
+    },
+    {
+      "name": "sparse_embedding",
+      "type": "SPARSE_FLOAT_VECTOR"
     }
   ]
 }
